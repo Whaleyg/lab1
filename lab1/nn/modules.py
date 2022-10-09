@@ -85,6 +85,7 @@ class Linear(Module):
             dx: input delta of shape (N, L_in).
         """
 
+        self.w.grad = np.vstack((np.sum(dy, axis=0), np.dot(self.x.T, dy)))
         return np.dot(dy, self.w[1:].T)
 
 
@@ -102,8 +103,12 @@ class BatchNorm1d(Module):
         # TODO Initialize the attributes
         # of 1d batchnorm module.
 
+        self.running_mean = np.zeros((length,))
+        self.running_var = np.zeros((length,))
+        self.gamma = tensor.ones((length,))
+        self.beta = tensor.zeros((length,))
         self.momentum = momentum
-
+        self.eps = 1e-5
 
         # End of todo
 
@@ -119,7 +124,15 @@ class BatchNorm1d(Module):
         # TODO Implement forward propogation
         # of 1d batchnorm module.
 
-        pass
+        if self.training:
+            self.mean = np.mean(x, axis=0)
+            self.var = np.var(x, axis=0)
+            self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * self.mean
+            self.running_var = self.momentum * self.running_var + (1 - self.momentum) * self.var
+            self.x = (x - self.mean) / np.sqrt(self.var + self.eps)
+        else:
+            self.x = (x - self.running_mean) / np.sqrt(self.running_var + self.eps)
+        return self.gamma * self.x + self.beta
 
         # End of todo
 
@@ -135,7 +148,12 @@ class BatchNorm1d(Module):
         # TODO Implement backward propogation
         # of 1d batchnorm module.
 
-        pass
+        self.gamma.grad = np.sum(dy * self.x, axis=0)
+        self.beta.grad = np.sum(dy, axis=0)
+        N = dy.shape[0]
+        dy *= self.gamma
+        dx = N * dy - np.sum(dy, axis=0) - self.x * np.sum(dy * self.x, axis=0)
+        return dx / (N * np.sqrt(self.var + self.eps))
         # End of todo
 
 
@@ -156,7 +174,13 @@ class Conv2d(Module):
         # TODO Initialize the attributes
         # of 2d convolution module.
 
-        pass
+        self.channels = channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+
+        self.kernel = tensor.rand((channels, in_channels, kernel_size, kernel_size))
+        self.bias = tensor.zeros(channels)
 
         # End of todo
 
@@ -172,7 +196,17 @@ class Conv2d(Module):
         # TODO Implement forward propogation
         # of 2d convolution module.
 
-        pass
+        B, C, H, W = x.shape
+        Hp, Wp = map(lambda i: (i - self.kernel_size + 2 * self.padding) // self.stride + 1, (H, W))
+        out = np.ndarray((B, self.channels, Hp, Wp))
+        if self.padding:
+            x = np.pad(x, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)))
+        self.x = x
+
+        for b, c, h, w in product(*tuple([range(d) for d in out.shape])):
+            out[b, c, h, w] = np.sum(self.kernel[c] * x[b, :, h * self.stride: h * self.stride + self.kernel_size,
+                                                      w * self.stride: w * self.stride + self.kernel_size])
+        return (out + self.bias) if self.bias else out
 
         # End of todo
 
@@ -188,7 +222,20 @@ class Conv2d(Module):
         # TODO Implement backward propogation
         # of 2d convolution module.
 
-        pass
+        dx = np.zeros_like(self.x)
+        self.kernel.grad = np.zeros_like(self.kernel)
+
+        for b, c, h, w in product(*tuple([range(d) for d in dy.shape])):
+            dx[b, :, h * self.stride: h * self.stride + self.kernel_size,
+            w * self.stride: w * self.stride + self.kernel_size] += self.kernel[c] * dy[b, c, h, w]
+
+            self.kernel.grad[c] += dy[b, c, h, w] * self.x[b, :, h * self.stride: h * self.stride + self.kernel_size,
+                                                    w * self.stride: w * self.stride + self.kernel_size]
+        if self.bias:
+            self.bias.grad = np.sum(dy, axis=(0, 2, 3))
+        if self.padding:
+            dx = dx[..., self.padding:-self.padding, self.padding:-self.padding]
+        return dx
 
         # End of todo
 
@@ -199,7 +246,17 @@ class Conv2d_im2col(Conv2d):
         # TODO Implement forward propogation of
         # 2d convolution module using im2col method.
 
-        pass
+        B, C, H, W = x.shape
+        Hp, Wp = map(lambda i: (i - self.kernel_size + 2 * self.padding) // self.stride + 1, (H, W))
+        out = np.ndarray((B, self.channels, Hp, Wp))
+        if self.padding:
+            x = np.pad(x, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)))
+        self.x = x
+        shape = (B, C, Hp, Wp, self.kernel_size, self.kernel_size)
+        strides = (*x.strides[:-2], x.strides[-2] * self.stride, x.strides[-1] * self.stride, *x.strides[-2:])
+        xp = np.lib.stride_tricks.as_strided(out, shape=shape, strides=strides, writeable=False)
+        x = np.tensordot(xp, self.kernel, axes=((1, -2, -1), (1, 2, 3))).transpose((0, 3, 1, 2))
+        return (out + self.bias) if self.bias else out
 
         # End of todo
 
@@ -348,7 +405,6 @@ class Dropout(Module):
         # TODO Initialize the attributes
         # of dropout module.
         self.p = p
-        self.mask = None
 
         # End of todo
 

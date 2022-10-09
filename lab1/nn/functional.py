@@ -16,15 +16,14 @@ class Sigmoid(Module):
         # TODO Implement forward propogation
         # of sigmoid function.
 
-        f = 1.0 / (1 + np.exp(-x))
-        self.x = f
-        return f
+        self.y = 1.0 / (1 + np.exp(-x))
+        return self.y
         # End of todo
 
     def backward(self, dy):
         # TODO Implement backward propogation
         # of sigmoid function.
-        return (1 - self.x) * self.x
+        return (1 - self.y) * self.y * dy
 
         # End of todo
 
@@ -35,16 +34,15 @@ class Tanh(Module):
         # TODO Implement forward propogation
         # of tanh function.
 
-        f = (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
-        self.x = f
-        return f
+        self.x = x
+        return np.tanh(x)
         # End of todo
 
     def backward(self, dy):
         # TODO Implement backward propogation
         # of tanh function.
 
-        return 1 - np.square(self.x)
+        return (1 - np.square(self.x)) * dy
 
         # End of todo
 
@@ -115,7 +113,11 @@ class SoftmaxLoss(Loss):
     def __call__(self, probs, targets):
         # TODO Calculate softmax loss.
 
-        ...
+        super(SoftmaxLoss, self).__call__(probs, targets)
+        exps = np.exp(probs)
+        probs = exps / np.sum(exps, axis=1, keepdims=True)
+        self.value = np.sum(-np.eye(self.n_classes)[targets] * np.log(probs))
+        return self
 
         # End of todo
 
@@ -123,17 +125,18 @@ class SoftmaxLoss(Loss):
         # TODO Implement backward propogation
         # of softmax loss function.
 
-        ...
+        return self.probs - np.eye(self.n_classes)[self.targets]
 
         # End of todo
 
 
-class CrossEntropyLoss(Loss):
+class CrossEntropyLoss(SoftmaxLoss):
 
     def __call__(self, probs, targets):
         # TODO Calculate cross-entropy loss.
 
-        ...
+        super(SoftmaxLoss, self).__call__(probs, targets)
+        return self
 
         # End of todo
 
@@ -145,18 +148,3 @@ class CrossEntropyLoss(Loss):
 
         # End of todo
 
-
-def avg_pool2d(input, kernel_size):
-    return None
-
-
-def linear(input, weight, bias):
-    return None
-
-
-def max_pool2d(input, kernel_size):
-    return None
-
-
-def conv2d(input, weight, bias):
-    return None

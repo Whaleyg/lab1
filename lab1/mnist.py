@@ -18,14 +18,29 @@ class Model(nn.Module):
 
     # TODO Design the classifier.
 
-    ...
+    def __init__(self, lengths: list, actv: str='ReLU') -> None:
+        Activation = getattr(F, actv)
+        self.layers = []
+        for i in range(len(lengths) - 1):
+            self.layers.append(nn.Linear(lengths[i], lengths[i + 1]))
+            self.layers.append(nn.BatchNorm1d(lengths[i + 1]))
+            self.layers.append(Activation() if i != len(lengths) - 2 else F.Softmax())
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+    def backward(self, delta):
+        for layer in reversed(self.layers):
+            delta = layer.backward(delta)
 
     # End of todo
 
 
 def load_mnist(mode='train', n_samples=None, flatten=True):
-    images = './train-images-idx3-ubyte' if mode == 'train' else './t10k-images-idx3-ubyte'
-    labels = './train-labels-idx1-ubyte' if mode == 'train' else './t10k-labels-idx1-ubyte'
+    images = './mnist/train-images-idx3-ubyte' if mode == 'train' else './mnist/t10k-images-idx3-ubyte'
+    labels = './mnist/train-labels-idx1-ubyte' if mode == 'train' else './mnist/t10k-labels-idx1-ubyte'
     length = 60000 if mode == 'train' else 10000
 
     X = np.fromfile(open(images), np.uint8)[16:].reshape(

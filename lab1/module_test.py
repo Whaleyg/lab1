@@ -225,37 +225,12 @@ class SoftmaxTest(TestBase):
 
 
 if __name__ == '__main__':
-    # args = parse_args()
-    # if args.tests:
-    #     args.tests = [t + 'Test' for t in args.tests]
-    # else:
-    #     modules = inspect.getmembers(sys.modules['__main__'], inspect.isclass)
-    #     args.tests = [m[0] for m in modules if m[0] != 'TestBase']
-    # for test in args.tests:
-    #     test_module = globals()[test]()
-    #     test_module()
-    N, D_in, D_out, H = 64, 1000, 10, 100
-    x = np.random.randn(N, D_in)
-    # 定义输入到神经网络之前的数据矩阵，大小为64*1000
-    y = np.random.randn(N, D_out)
-    # 定义从神经网络输出的的数据矩阵，大小为64*10
-    w_1 = np.random.randn(D_in, H)
-    # 大小为1000*100
-    w_2 = np.random.randn(H, D_out)
-    # 大小为100*10
-    module_linear = nn.Linear(D_in, D_out)
-    module_sigmoid = F.Sigmoid()
-    learning_rate = 1e-06
-    for i in range(500):
-        out = module_linear.forward(x)
-        out_sigmoid = module_sigmoid.forward(out)
-        y_hat = out_sigmoid.dot(w_2)
-        loss = np.square(y_hat - y).sum()
-        print(i, loss)
-        y_hat_grad = 2 * (y_hat - y)
-        w_2_grad = module_linear.backward(y_hat_grad)
-        h_sigmoid_grad = module_sigmoid.backward(y_hat_grad)
-        h_grad = h_sigmoid_grad.copy()
-        w_1_grad = x.T.dot(h_grad)
-        w_1 = w_1 - learning_rate * w_1_grad
-        w_2 = w_2 - learning_rate * w_2_grad
+    args = parse_args()
+    if args.tests:
+        args.tests = [t + 'Test' for t in args.tests]
+    else:
+        modules = inspect.getmembers(sys.modules['__main__'], inspect.isclass)
+        args.tests = [m[0] for m in modules if m[0] != 'TestBase']
+    for test in args.tests:
+        test_module = globals()[test]()
+        test_module()
